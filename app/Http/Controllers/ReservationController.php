@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ReservationEvent;
 use App\Http\Requests\ReservationRequest;
 use App\Models\Hotel;
 use App\Models\Reservation;
@@ -65,7 +66,7 @@ class ReservationController extends Controller
 
                 $appliedRatings[] = [
                     'rating_id' => $rating->id,
-                    'rating_start_date' => $overlappedStartDate->toDateString(),  
+                    'rating_start_date' => $overlappedStartDate->toDateString(),
                     'rating_end_date' => $overlappedEndDate->toDateString(),
 
                 ];
@@ -119,6 +120,9 @@ class ReservationController extends Controller
                 'rating_end_date' => $rating['rating_end_date']
             ]);
         }
+
+
+        ReservationEvent::dispatch($reservation, $user);
 
         return response()->json(['message' => 'Your reservation has been created successfully', 'reservation' => $reservation], 201);
     }
