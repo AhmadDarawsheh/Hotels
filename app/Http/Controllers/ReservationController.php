@@ -15,33 +15,7 @@ use function PHPUnit\Framework\isNull;
 
 class ReservationController extends Controller
 {
-    function overlappedRatings() {}
-
-    public function createReservation(ReservationRequest $request, $roomId, $hotelId)
-    {
-        $user = auth()->user();
-        $hotel = Hotel::find($hotelId);
-
-        if (!$hotel) {
-            return response()->json(['message' => 'Please choose the correct hotel!']);
-        }
-
-        $room = Room::findOrFail($roomId);
-
-        $startDate = Carbon::parse($request->input('start_date'));
-        $endDate = Carbon::parse($request->input('end_date'));
-
-        $reservationCount = Reservation::where('room_id', $roomId)->where(function ($query) use ($startDate, $endDate) {
-            $query->where('start_date', '<', $endDate)
-                ->where('end_date', '>', $startDate);
-        })->count(); // check the room counts within the reservation dates 
-        if ($reservationCount >= $room->available_rooms) {
-            return response()->json(['message' => 'No rooms available all reserved!']);
-        }
-
-
-
-        function overlappedRatings($startDate, $endDate, $ratings)
+    protected function overlappedRatings($startDate, $endDate, $ratings)
         {
             $appliedRatings = [];
             $totalPrice = 0;
@@ -72,18 +46,42 @@ class ReservationController extends Controller
                 ];
 
                 if ($overlappedStartDate->greaterthan($startDate)) {
-                    [$leftAppliedRating, $leftTotalPrice] =  overlappedRatings($startDate, $overlappedStartDate->subDay(), $ratings->slice(1));
+                    [$leftAppliedRating, $leftTotalPrice] =  $this->overlappedRatings($startDate, $overlappedStartDate->subDay(), $ratings->slice(1));
                     $appliedRatings = array_merge($appliedRatings, $leftAppliedRating);
                     $totalPrice += $leftTotalPrice;
                 }
 
                 if ($overlappedEndDate->lessthan($endDate)) {
-                    [$rightAppliedRating, $rightTotalPrice] = overlappedRatings($overlappedEndDate->addDay(), $endDate, $ratings->slice(1));
+                    [$rightAppliedRating, $rightTotalPrice] = $this->overlappedRatings($overlappedEndDate->addDay(), $endDate, $ratings->slice(1));
                     $appliedRatings = array_merge($appliedRatings, $rightAppliedRating);
                     $totalPrice += $rightTotalPrice;
                 }
             }
             return [$appliedRatings, $totalPrice];
+        }
+
+
+
+    public function createReservation(ReservationRequest $request, $roomId, $hotelId)
+    {
+        $user = auth()->user();
+        $hotel = Hotel::find($hotelId);
+
+        if (!$hotel) {
+            return response()->json(['message' => 'Please choose the correct hotel!']);
+        }
+
+        $room = Room::findOrFail($roomId);
+
+        $startDate = Carbon::parse($request->input('start_date'));
+        $endDate = Carbon::parse($request->input('end_date'));
+
+        $reservationCount = Reservation::where('room_id', $roomId)->where(function ($query) use ($startDate, $endDate) {
+            $query->where('start_date', '<', $endDate)
+                ->where('end_date', '>', $startDate);
+        })->count(); // check the room counts within the reservation dates 
+        if ($reservationCount >= $room->available_rooms) {
+            return response()->json(['message' => 'No rooms available all reserved!']);
         }
 
 
@@ -102,7 +100,7 @@ class ReservationController extends Controller
             ->get();
 
 
-        [$appliedRatings, $totalPrice] = overlappedRatings($startDate, $endDate, $ratings);
+        [$appliedRatings, $totalPrice] = $this->overlappedRatings($startDate, $endDate, $ratings);
 
         Logger([$appliedRatings, $totalPrice]);
 
