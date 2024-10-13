@@ -16,49 +16,49 @@ use function PHPUnit\Framework\isNull;
 class ReservationController extends Controller
 {
     protected function overlappedRatings($startDate, $endDate, $ratings)
-        {
-            $appliedRatings = [];
-            $totalPrice = 0;
+    {
+        $appliedRatings = [];
+        $totalPrice = 0;
 
 
-            if ($ratings->isEmpty()) {
-                return [$appliedRatings, $totalPrice];
-            }
-
-            $rating = $ratings->first();
-            $ratingStartDate = $rating->start_date ? Carbon::parse($rating->start_date) : null;
-            $ratingEndDate = $rating->end_date ? Carbon::parse($rating->end_date) : null;
-
-
-            if (($ratingStartDate <= $endDate && $ratingEndDate >= $startDate) || (is_null($ratingStartDate) && is_null($ratingEndDate))) {
-                $overlappedStartDate = max($startDate, $ratingStartDate ?? $startDate);
-                $overlappedEndDate = min($endDate, $ratingEndDate ?? $endDate);
-
-                $overlappedRatingDays = $overlappedStartDate->diffInDays($overlappedEndDate) + 1;
-
-                $totalPrice += $overlappedRatingDays * $rating->price;
-
-                $appliedRatings[] = [
-                    'rating_id' => $rating->id,
-                    'rating_start_date' => $overlappedStartDate->toDateString(),
-                    'rating_end_date' => $overlappedEndDate->toDateString(),
-
-                ];
-
-                if ($overlappedStartDate->greaterthan($startDate)) {
-                    [$leftAppliedRating, $leftTotalPrice] =  $this->overlappedRatings($startDate, $overlappedStartDate->subDay(), $ratings->slice(1));
-                    $appliedRatings = array_merge($appliedRatings, $leftAppliedRating);
-                    $totalPrice += $leftTotalPrice;
-                }
-
-                if ($overlappedEndDate->lessthan($endDate)) {
-                    [$rightAppliedRating, $rightTotalPrice] = $this->overlappedRatings($overlappedEndDate->addDay(), $endDate, $ratings->slice(1));
-                    $appliedRatings = array_merge($appliedRatings, $rightAppliedRating);
-                    $totalPrice += $rightTotalPrice;
-                }
-            }
+        if ($ratings->isEmpty()) {
             return [$appliedRatings, $totalPrice];
         }
+
+        $rating = $ratings->first();
+        $ratingStartDate = $rating->start_date ? Carbon::parse($rating->start_date) : null;
+        $ratingEndDate = $rating->end_date ? Carbon::parse($rating->end_date) : null;
+
+
+        if (($ratingStartDate <= $endDate && $ratingEndDate >= $startDate) || (is_null($ratingStartDate) && is_null($ratingEndDate))) {
+            $overlappedStartDate = max($startDate, $ratingStartDate ?? $startDate);
+            $overlappedEndDate = min($endDate, $ratingEndDate ?? $endDate);
+
+            $overlappedRatingDays = $overlappedStartDate->diffInDays($overlappedEndDate) + 1;
+
+            $totalPrice += $overlappedRatingDays * $rating->price;
+
+            $appliedRatings[] = [
+                'rating_id' => $rating->id,
+                'rating_start_date' => $overlappedStartDate->toDateString(),
+                'rating_end_date' => $overlappedEndDate->toDateString(),
+
+            ];
+
+            if ($overlappedStartDate->greaterthan($startDate)) {
+                [$leftAppliedRating, $leftTotalPrice] =  $this->overlappedRatings($startDate, $overlappedStartDate->subDay(), $ratings->slice(1));
+                $appliedRatings = array_merge($appliedRatings, $leftAppliedRating);
+                $totalPrice += $leftTotalPrice;
+            }
+
+            if ($overlappedEndDate->lessthan($endDate)) {
+                [$rightAppliedRating, $rightTotalPrice] = $this->overlappedRatings($overlappedEndDate->addDay(), $endDate, $ratings->slice(1));
+                $appliedRatings = array_merge($appliedRatings, $rightAppliedRating);
+                $totalPrice += $rightTotalPrice;
+            }
+        }
+        return [$appliedRatings, $totalPrice];
+    }
 
 
 
@@ -119,9 +119,20 @@ class ReservationController extends Controller
             ]);
         }
 
+        $reservation = Reservation::with(['room.hotel'])->find($reservation->id);
 
         ReservationEvent::dispatch($reservation, $user);
 
         return response()->json(['message' => 'Your reservation has been created successfully', 'reservation' => $reservation], 201);
+    }
+
+
+    public function getReservations()
+    {
+        $user = auth()->user();
+
+        $reservations = Reservation::with('room.hotel')->where('user_id', $user->id)->orderBy('created_at', 'desc')->get();
+
+        return response()->json(['reservations' => $reservations]);
     }
 }

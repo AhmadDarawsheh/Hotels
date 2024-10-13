@@ -20,6 +20,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+
+
+
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
@@ -50,7 +53,9 @@ Route::middleware('auth:api', 'role:employee')->group(function () {
 
 Route::middleware('auth:api', 'role:customer')->group(function () {
     Route::post('/hotels/{hotel}/rooms/{room}/createReservation', [ReservationController::class, 'createReservation']);
+    Route::get('/getReservations',[ReservationController::class, 'getReservations']);
 });
 
-Route::get('/hotels', [AdminController::class, 'getHotels']);
+Route::get('/hotels', [AdminController::class, 'searchHotels']);
 Route::get('/hotels/{hotel}/rooms', [RoomController::class, 'getRooms']);
+Route::get('/hotels/rooms/{room}/ratings', [RatingController::class, 'getRatings']);

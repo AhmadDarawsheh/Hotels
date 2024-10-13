@@ -39,4 +39,17 @@ class RatingController extends Controller
 
         return response()->json(['message' => 'Rating deleted successfully'], 200);
     }
+
+    public function getRatings($roomId)
+    {
+        $room = Room::findOrFail($roomId);
+        $ratings = $room->ratings()->select('id', 'room_id', 'price', 'start_date','end_date')->get();
+
+        if (!$ratings) {
+            return response()->json(['message' => 'Rating not found for this room'], 404);
+        }
+
+
+        return response()->json((['message' => "Ratings retrived successfully. ", 'ratings' => $ratings]));
+    }
 }

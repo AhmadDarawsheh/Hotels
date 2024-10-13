@@ -100,10 +100,26 @@ class AdminController extends Controller
     }
 
 
-    public function getHotels()
-    {
-        $hotels = Hotel::select('name', 'address')->get();
+    // public function getHotels()
+    // {
+    //     $hotels = Hotel::select('name', 'address')->get();
 
-        return response()->json(['Hotels' => $hotels]);
+    //     return response()->json(['Hotels' => $hotels]);
+    // }
+
+
+    public function searchHotels(Request $request)
+    {
+        $searchQuery = $request->input('q');
+
+        if ($searchQuery) {
+            $hotels = Hotel::where('name', 'LIKE', '%' . $searchQuery . '%')
+                ->select('name', 'address','id')
+                ->get();
+        } else {
+            $hotels = Hotel::select('name', 'address','id')->get();
+        }
+
+        return response()->json(['hotels' => $hotels]);
     }
 }

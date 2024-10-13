@@ -39,8 +39,8 @@ class RoomController extends Controller
 
     public function getRooms($hotelId)
     {
-        $rooms = Room::select('type', 'available_rooms')->where('hotel_id', $hotelId)->get();
+        $rooms = Room::select('type', 'available_rooms','id')->where('hotel_id', $hotelId)->get();
 
-        return response()->json(['Rooms:' => $rooms]);
+        return response()->json(['rooms' => $rooms]);
     }
 }
