@@ -15,50 +15,52 @@ use function PHPUnit\Framework\isNull;
 
 class ReservationController extends Controller
 {
-    protected function overlappedRatings($startDate, $endDate, $ratings)
-    {
-        $appliedRatings = [];
-        $totalPrice = 0;
+    protected function overlappedRatings($startDate, $endDate, $ratings, $index = 0)
+{
+    $appliedRatings = [];
+    $totalPrice = 0;
 
-
-        if ($ratings->isEmpty()) {
-            return [$appliedRatings, $totalPrice];
-        }
-
-        $rating = $ratings->first();
-        $ratingStartDate = $rating->start_date ? Carbon::parse($rating->start_date) : null;
-        $ratingEndDate = $rating->end_date ? Carbon::parse($rating->end_date) : null;
-
-
-        if (($ratingStartDate <= $endDate && $ratingEndDate >= $startDate) || (is_null($ratingStartDate) && is_null($ratingEndDate))) {
-            $overlappedStartDate = max($startDate, $ratingStartDate ?? $startDate);
-            $overlappedEndDate = min($endDate, $ratingEndDate ?? $endDate);
-
-            $overlappedRatingDays = $overlappedStartDate->diffInDays($overlappedEndDate) + 1;
-
-            $totalPrice += $overlappedRatingDays * $rating->price;
-
-            $appliedRatings[] = [
-                'rating_id' => $rating->id,
-                'rating_start_date' => $overlappedStartDate->toDateString(),
-                'rating_end_date' => $overlappedEndDate->toDateString(),
-
-            ];
-
-            if ($overlappedStartDate->greaterthan($startDate)) {
-                [$leftAppliedRating, $leftTotalPrice] =  $this->overlappedRatings($startDate, $overlappedStartDate->subDay(), $ratings->slice(1));
-                $appliedRatings = array_merge($appliedRatings, $leftAppliedRating);
-                $totalPrice += $leftTotalPrice;
-            }
-
-            if ($overlappedEndDate->lessthan($endDate)) {
-                [$rightAppliedRating, $rightTotalPrice] = $this->overlappedRatings($overlappedEndDate->addDay(), $endDate, $ratings->slice(1));
-                $appliedRatings = array_merge($appliedRatings, $rightAppliedRating);
-                $totalPrice += $rightTotalPrice;
-            }
-        }
+    if ($index >= $ratings->count()) {
         return [$appliedRatings, $totalPrice];
     }
+
+    $rating = $ratings[$index]; 
+    $ratingStartDate = $rating->start_date ? Carbon::parse($rating->start_date) : null;
+    $ratingEndDate = $rating->end_date ? Carbon::parse($rating->end_date) : null;
+
+    if (($ratingStartDate && $ratingEndDate && $ratingStartDate <= $endDate && $ratingEndDate >= $startDate) ||
+        (is_null($ratingStartDate) && is_null($ratingEndDate))) {
+        
+        $overlappedStartDate = max($startDate, $ratingStartDate ?? $startDate);
+        $overlappedEndDate = min($endDate, $ratingEndDate ?? $endDate);
+
+        $overlappedRatingDays = $overlappedStartDate->diffInDays($overlappedEndDate) + 1;
+        $totalPrice += $overlappedRatingDays * $rating->price;
+
+        $appliedRatings[] = [
+            'rating_id' => $rating->id,
+            'rating_start_date' => $overlappedStartDate->toDateString(),
+            'rating_end_date' => $overlappedEndDate->toDateString(),
+        ];
+
+        if ($overlappedStartDate->greaterThan($startDate)) {
+            [$leftAppliedRating, $leftTotalPrice] = $this->overlappedRatings($startDate, $overlappedStartDate->subDay(), $ratings, $index + 1);
+            $appliedRatings = array_merge($appliedRatings, $leftAppliedRating);
+            $totalPrice += $leftTotalPrice;
+        }
+
+        if ($overlappedEndDate->lessThan($endDate)) {
+            [$rightAppliedRating, $rightTotalPrice] = $this->overlappedRatings($overlappedEndDate->addDay(), $endDate, $ratings, $index + 1);
+            $appliedRatings = array_merge($appliedRatings, $rightAppliedRating);
+            $totalPrice += $rightTotalPrice;
+        }
+
+        return [$appliedRatings, $totalPrice];
+    }
+
+    return $this->overlappedRatings($startDate, $endDate, $ratings, $index + 1);
+}
+
 
 
 
@@ -123,7 +125,7 @@ class ReservationController extends Controller
 
         ReservationEvent::dispatch($reservation, $user);
 
-        return response()->json(['message' => 'Your reservation has been created successfully', 'reservation' => $reservation], 201);
+        return response()->json(['message' => 'Your reservation has been created successfully', 'appliedRatings' => $appliedRatings ,'reservation' => $reservation], 201);
     }
 
 

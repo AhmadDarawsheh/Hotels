@@ -43,7 +43,7 @@ class AdminController extends Controller
 
         $hotel->delete();
 
-        return response()->json(['Hotel has been deleted successfully', $hotel]);
+        return response()->json(['message' => 'Hotel has been deleted successfully', $hotel]);
     }
 
 
